@@ -14,8 +14,7 @@ contract ChainlinkAdapter is Ownable {
     mapping(bytes32 => uint8) public decimals;
     address[] allAggregators;
 
-    event SetPair(bytes32 _symbolA, bytes32 _symbolB, address _aggregator);
-    event SetDecimals(bytes32 _symbol, uint8 _decimals);
+    event SetAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator, uint8 _decimalsA, uint8 _decimalsB);
 
     function symbolToBytes32(string calldata _symbol) external pure returns (bytes32) {
         return _symbol.toBytes32();
@@ -25,19 +24,12 @@ contract ChainlinkAdapter is Ownable {
         return allAggregators.length;
     }
 
-    function setDecimals(bytes32 _symbol, uint8 _decimals) external {
-        decimals[_symbol] = _decimals;
-        emit SetDecimals(_symbol, _decimals);
-    }
-
-    function setPair(bytes32 _symbolA, bytes32 _symbolB, address aggregator) external {
-        aggregators[_symbolA][_symbolB] = aggregator;
-        emit SetPair(_symbolA, _symbolB, aggregator);
-    }
-
-    function getPairLastRate (bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 answer)  {
-        AggregatorInterface aggregator = AggregatorInterface(aggregators[_symbolA][_symbolB]);
-        answer = uint256(aggregator.latestAnswer());
+    function setAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator, uint8 _decimalsA, uint8 _decimalsB) external onlyOwner {
+        require(_aggregator != address(0), "Aggregator 0x0 is not valid");
+        aggregators[_symbolA][_symbolB] = _aggregator;
+        decimals[_symbolA] = _decimalsA;
+        decimals[_symbolB] = _decimalsB;
+        emit SetAggregator(_symbolA, _symbolB, _aggregator, _decimalsA, _decimalsB);
     }
 
     function getRate (bytes32[] calldata path) external view returns (uint256 combinedRate)  {
@@ -46,7 +38,13 @@ contract ChainlinkAdapter is Ownable {
             (bytes32 input, bytes32 output) = (path[i], path[i + 1]);
             (uint256 rate0) = _getPairRate(input, output);
             combinedRate = prevRate > 0 ? _getCombined(prevRate, rate0, decimals[input]) : rate0;
+            prevRate = combinedRate;
         }
+    }
+
+    function getPairLastRate (bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 answer)  {
+        AggregatorInterface aggregator = AggregatorInterface(aggregators[_symbolA][_symbolB]);
+        answer = uint256(aggregator.latestAnswer());
     }
 
     function _getPairRate(bytes32 input, bytes32 output) private view returns (uint256 rate) {
@@ -57,13 +55,12 @@ contract ChainlinkAdapter is Ownable {
         } else {
             uint256 decimals0 = 10 ** uint256(decimals[input]);
             uint256 decimals1 = 10 ** uint256(decimals[output]);
-            rate = decimals0.mult(decimals1).div(getPairLastRate(input, output));
+            rate = decimals0.mult(decimals1).div(getPairLastRate(output, input));
         }
     }
 
     function _getCombined(uint256 rate0, uint256 rate1, uint8 _decimals0) private pure returns (uint256 combinedRate) {
-        uint256 decimals0 = 10 ** uint256(_decimals0);
-        combinedRate = rate0.mult(rate1).div(decimals0);
+        combinedRate = rate0.mult(rate1).div(10 ** uint256(_decimals0));
     }
 }
 
