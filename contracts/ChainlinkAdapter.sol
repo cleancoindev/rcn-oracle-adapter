@@ -4,9 +4,10 @@ import "./commons/Ownable.sol";
 import "./interfaces/AggregatorInterface.sol";
 import "./utils/SafeMath.sol";
 import "./utils/StringUtils.sol";
+import "./interfaces/IOracleAdapter.sol";
 
 
-contract ChainlinkAdapter is Ownable {
+contract ChainlinkAdapter is Ownable, IOracleAdapter {
     using SafeMath for uint256;
     using StringUtils for string;
 
@@ -24,7 +25,8 @@ contract ChainlinkAdapter is Ownable {
         return allAggregators.length;
     }
 
-    function setAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator, uint8 _decimalsA, uint8 _decimalsB) external onlyOwner {
+    function setAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator, uint8 _decimalsA, uint8 _decimalsB) external
+        override onlyOwner {
         require(_aggregator != address(0), "Aggregator 0x0 is not valid");
         aggregators[_symbolA][_symbolB] = _aggregator;
         decimals[_symbolA] = _decimalsA;
@@ -32,7 +34,7 @@ contract ChainlinkAdapter is Ownable {
         emit SetAggregator(_symbolA, _symbolB, _aggregator, _decimalsA, _decimalsB);
     }
 
-    function getRate (bytes32[] calldata path) external view returns (uint256 combinedRate)  {
+    function getRate (bytes32[] calldata path) external override view returns (uint256 combinedRate)  {
         uint256 prevRate;
         for (uint i; i < path.length - 1; i++) {
             (bytes32 input, bytes32 output) = (path[i], path[i + 1]);
