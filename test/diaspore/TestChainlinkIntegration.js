@@ -6,9 +6,11 @@ const MultiSourceOracle = artifacts.require('MultiSourceOracle');
 const {
     bn,
     toEvents,
+    tryCatchRevert,
     expect,
     address0x,
 } = require('../Helper.js');
+const { assert } = require('chai');
 
 contract('chainLinkAdapter Contract', function (accounts) {
     const owner = accounts[0];
@@ -192,6 +194,64 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const decimalsAdded = await chainlinkAdapter.getAddedDecimals(currencyD);
             const factoryDecimals = await oracleFactoryUSDC.baseDecimals();
             expect(tokens).to.eq.BN(factoryDecimals.mul(decimalsAdded));
+        });
+    });
+
+    describe('Test pausable ', async function () {
+        it('Test pause ecosystem ', async function () {
+            // Pause ecosystem
+            assert.equal(await oracleFactory.paused(), false);
+            await oracleFactory.pause({ from: owner });
+            assert.equal(await oracleFactory.paused(), true);
+
+            await tryCatchRevert(
+                () => oracleFactory.start(
+                    { from: accounts[1] }
+                ),
+                'Ownable: caller is not the owner'
+            );
+
+            const usdcOracle = await oracleFactory.symbolToOracle('USDC');
+            const oracleInstance = await MultiSourceOracle.at(usdcOracle);
+
+            await tryCatchRevert(
+                () => oracleInstance.readSample(
+                    [],
+                    { from: owner }
+                ),
+                'contract paused'
+            );
+
+            // start ecosystem
+            await oracleFactory.start({ from: owner });
+            assert.equal(await oracleFactory.paused(), false);
+        });
+        it('Test pause oracle ', async function () {
+            const usdcOracle = await oracleFactory.symbolToOracle('USDC');
+            const oracleInstance = await MultiSourceOracle.at(usdcOracle);
+            assert.equal(await oracleInstance.paused(), false);
+
+            await tryCatchRevert(
+                () => oracleFactory.pauseOracle(
+                    usdcOracle,
+                    { from: accounts[1] }
+                ),
+                'not authorized to pause'
+            );
+
+            await oracleFactory.pauseOracle(usdcOracle);
+            assert.equal(await oracleInstance.paused(), true);
+
+            await tryCatchRevert(
+                () => oracleInstance.readSample(
+                    [],
+                    { from: owner }
+                ),
+                'contract paused'
+            );
+
+            await oracleFactory.startOracle(usdcOracle);
+            assert.equal(await oracleInstance.paused(), false);
         });
     });
 });
