@@ -1,1 +1,1 @@
-# chainlink-adapter
+# oracle-adapter
