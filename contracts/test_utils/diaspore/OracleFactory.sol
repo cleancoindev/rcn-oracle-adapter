@@ -33,14 +33,14 @@ contract OracleFactory is Ownable {
     );
 
     string public baseToken;
-    uint256 baseDecimals;
+    uint256 public baseDecimals;
 
     constructor(
         string memory _baseToken,
-        uint256 _baseDecimals
+        uint256 _decimals
     ) public {
         baseToken = _baseToken;
-        baseDecimals = _baseDecimals;
+        baseDecimals = 10 ** _decimals;
     }
 
     /**

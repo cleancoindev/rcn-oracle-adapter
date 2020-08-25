@@ -25,6 +25,10 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
         return allAggregators.length;
     }
 
+    function getAddedDecimals (bytes32 _symbol) external override view returns (uint256) {
+        return 10 ** uint256(decimals[_symbol]);
+    }
+
     function setAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator, uint8 _decimalsA, uint8 _decimalsB) external
         override onlyOwner {
         require(_aggregator != address(0), "Aggregator 0x0 is not valid");

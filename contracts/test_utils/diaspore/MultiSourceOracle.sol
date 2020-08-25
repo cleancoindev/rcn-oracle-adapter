@@ -4,10 +4,12 @@ import "../../commons/Ownable.sol";
 import "../../utils/StringUtils.sol";
 import "./RateOracle.sol";
 import "../../interfaces/IOracleAdapter.sol";
+import "../../utils/SafeMath.sol";
 
 
 contract MultiSourceOracle is RateOracle, Ownable {
     using StringUtils for string;
+    using SafeMath for uint256;
 
     RateOracle public upgrade;
 
@@ -168,9 +170,10 @@ contract MultiSourceOracle is RateOracle, Ownable {
             return _upgrade.readSample(_oracleData);
         }
 
-        // Tokens is always base
-        _tokens = ibase;
-        _equivalent = oracleAdapter.getRate(path);
+        // Tokens is always base ; base = ibase.mult(oracleAdapter.getAddedDecimals())
+        uint256 base = ibase.mult(oracleAdapter.getAddedDecimals(icurrency));
+        _tokens = base;
+        _equivalent = (oracleAdapter.getRate(path)).mult(10 ** idecimals);
     }
 
     /**
