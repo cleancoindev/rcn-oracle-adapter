@@ -5,9 +5,11 @@ import "../utils/StringUtils.sol";
 import "./RateOracle.sol";
 import "../interfaces/IOracleAdapter.sol";
 import "../utils/SafeMath.sol";
+import "../interfaces/PausedProvided.sol";
+import "../commons/Pausable.sol";
 
 
-contract MultiSourceOracle is RateOracle, Ownable {
+contract MultiSourceOracle is RateOracle, Ownable, Pausable {
     using StringUtils for string;
     using SafeMath for uint256;
 
@@ -16,6 +18,8 @@ contract MultiSourceOracle is RateOracle, Ownable {
     uint256 public ibase;
     bytes32[] public path;
     IOracleAdapter public oracleAdapter;
+    PausedProvided public pausedProvided;
+
 
     string private isymbol;
     string private iname;
@@ -49,6 +53,7 @@ contract MultiSourceOracle is RateOracle, Ownable {
         imaintainer = _maintainer;
         path = _path;
         ibase = _base;
+        pausedProvided = PausedProvided(msg.sender);
     }
 
     /**
@@ -161,7 +166,7 @@ contract MultiSourceOracle is RateOracle, Ownable {
      */
     function readSample(bytes memory _oracleData) public override view returns (uint256 _tokens, uint256 _equivalent) {
         // Check if paused
-        // require(!paused && !pausedProvider.isPaused(), "contract paused");
+        require(!paused && !pausedProvided.isPaused(), "contract paused");
 
         // Check if Oracle contract has been upgraded
         RateOracle _upgrade = upgrade;
