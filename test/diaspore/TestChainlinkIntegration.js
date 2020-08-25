@@ -5,12 +5,10 @@ const MultiSourceOracle = artifacts.require('MultiSourceOracle');
 
 const {
     bn,
-    tryCatchRevert,
     toEvents,
     expect,
     address0x,
 } = require('../Helper.js');
-const { assert } = require('chai');
 
 contract('chainLinkAdapter Contract', function (accounts) {
     const owner = accounts[0];
@@ -99,8 +97,8 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const decimalsAdded = await chainlinkAdapter.getAddedDecimals(currencyD);
             const factoryDecimals = await oracleFactory.baseDecimals();
             expect(tokens).to.eq.BN(factoryDecimals.mul(decimalsAdded));
-
         });
+
         it('Test Oracle Factory for RCN , set path [RCN,BTC,ARS] ', async function () {
             const currencyA = await symbolToBytes32('RCN');
             const currencyB = await symbolToBytes32('BTC');

@@ -67,15 +67,15 @@ contract OracleFactory is Ownable {
         // Create oracle contract
         address oracle;
         {
-            oracle = _createOracle(
-                _oracleAdapter,
-                _symbol,
-                _name,
-                _decimals,
-                _token,
-                _maintainer,
-                _path
-            );
+        oracle = _createOracle(
+            _oracleAdapter,
+            _symbol,
+            _name,
+            _decimals,
+            _token,
+            _maintainer,
+            _path
+        );
         }
         // Sanity check new oracle
         assert(bytes(oracleToSymbol[address(oracle)]).length == 0);
@@ -105,6 +105,7 @@ contract OracleFactory is Ownable {
         MultiSourceOracle(_oracle).setUpgrade(RateOracle(_upgrade));
         emit Upgraded(_oracle, _upgrade);
     }
+
     /**
      * @dev Updates the medatada of the oracle
      * @param _oracle oracle address to update its metadata
@@ -140,46 +141,49 @@ contract OracleFactory is Ownable {
     }
 
     function _createOracle(
-            IOracleAdapter _oracleAdapter,
-            string memory _symbol,
-            string memory _name,
-            uint256 _decimals,
-            address _token,
-            string memory _maintainer,
-            bytes32[] memory _path
-        ) private returns(address oracle){
-            oracle = address(new MultiSourceOracle(
-                _oracleAdapter,
-                baseToken,
-                baseDecimals,
-                _symbol,
-                _name,
-                _decimals,
-                _token,
-                _maintainer,
-                _path
-            ));
+        IOracleAdapter _oracleAdapter,
+        string memory _symbol,
+        string memory _name,
+        uint256 _decimals,
+        address _token,
+        string memory _maintainer,
+        bytes32[] memory _path
+    ) private returns(address oracle)
+    {
+        oracle = address(
+            new MultiSourceOracle(
+            _oracleAdapter,
+            baseToken,
+            baseDecimals,
+            _symbol,
+            _name,
+            _decimals,
+            _token,
+            _maintainer,
+            _path
+        ));
     }
 
-     function _emitNewOracle(
-                address _oracleAdapter,
-                string memory _symbol,
-                address oracle,
-                string memory _name,
-                uint256 _decimals,
-                address _token,
-                string memory _maintainer,
-                bytes32[] memory _path
-            ) private  {
-              emit NewOracle(
-                _oracleAdapter,
-                _symbol,
-                oracle,
-                _name,
-                _decimals,
-                _token,
-                _maintainer,
-                _path
-                   );
-            }
+    function _emitNewOracle(
+        address _oracleAdapter,
+        string memory _symbol,
+        address oracle,
+        string memory _name,
+        uint256 _decimals,
+        address _token,
+        string memory _maintainer,
+        bytes32[] memory _path
+    ) private
+    {
+        emit NewOracle(
+            _oracleAdapter,
+            _symbol,
+            oracle,
+            _name,
+            _decimals,
+            _token,
+            _maintainer,
+            _path
+        );
+    }
 }

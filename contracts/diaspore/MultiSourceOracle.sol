@@ -1,10 +1,10 @@
 pragma solidity ^0.6.6;
 
-import "../../commons/Ownable.sol";
-import "../../utils/StringUtils.sol";
+import "../commons/Ownable.sol";
+import "../utils/StringUtils.sol";
 import "./RateOracle.sol";
-import "../../interfaces/IOracleAdapter.sol";
-import "../../utils/SafeMath.sol";
+import "../interfaces/IOracleAdapter.sol";
+import "../utils/SafeMath.sol";
 
 
 contract MultiSourceOracle is RateOracle, Ownable {
@@ -55,9 +55,8 @@ contract MultiSourceOracle is RateOracle, Ownable {
         3 or 4 letters symbol of the currency, Ej: ETH
     */
     function baseToken() external override virtual view returns (string memory) {
-         return ibaseToken;
+        return ibaseToken;
     }
-
 
     /**
      * @return metadata, 3 or 4 letter symbol of the currency provided by this oracle

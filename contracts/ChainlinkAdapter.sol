@@ -29,13 +29,24 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
         return 10 ** uint256(decimals[_symbol]);
     }
 
-    function setAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator, uint8 _decimalsA, uint8 _decimalsB) external
-        override onlyOwner {
+    function setAggregator(
+        bytes32 _symbolA,
+        bytes32 _symbolB,
+        address _aggregator,
+        uint8 _decimalsA,
+        uint8 _decimalsB
+    ) external override onlyOwner {
         require(_aggregator != address(0), "Aggregator 0x0 is not valid");
         aggregators[_symbolA][_symbolB] = _aggregator;
         decimals[_symbolA] = _decimalsA;
         decimals[_symbolB] = _decimalsB;
-        emit SetAggregator(_symbolA, _symbolB, _aggregator, _decimalsA, _decimalsB);
+        emit SetAggregator(
+            _symbolA,
+            _symbolB,
+            _aggregator,
+            _decimalsA,
+            _decimalsB
+        );
     }
 
     function getRate (bytes32[] calldata path) external override view returns (uint256 combinedRate)  {
