@@ -13,16 +13,12 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
 
     mapping(bytes32 => mapping(bytes32 => address)) public aggregators;
     mapping(bytes32 => uint8) public decimals;
-    address[] allAggregators;
 
     event SetAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator, uint8 _decimalsA, uint8 _decimalsB);
+    event RemoveAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator);
 
     function symbolToBytes32(string calldata _symbol) external pure returns (bytes32) {
         return _symbol.toBytes32();
-    }
-
-    function allAggregatorsLength() external view returns (uint) {
-        return allAggregators.length;
     }
 
     function getAddedDecimals (bytes32 _symbol) external override view returns (uint256) {
@@ -36,16 +32,35 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
         uint8 _decimalsA,
         uint8 _decimalsB
     ) external override onlyOwner {
-        require(_aggregator != address(0), "Aggregator 0x0 is not valid");
+        require(_aggregator != address(0), "ChainLinkAdapter/Aggregator 0x0 is not valid");
+        require(aggregators[_symbolA][_symbolB] == address(0), "ChainLinkAdapter/Aggregator is already set");
+
         aggregators[_symbolA][_symbolB] = _aggregator;
         decimals[_symbolA] = _decimalsA;
         decimals[_symbolB] = _decimalsB;
+
         emit SetAggregator(
             _symbolA,
             _symbolB,
             _aggregator,
             _decimalsA,
             _decimalsB
+        );
+    }
+
+    function removeAggregator(
+        bytes32 _symbolA,
+        bytes32 _symbolB
+    ) external override onlyOwner {
+        require(aggregators[_symbolA][_symbolB] != address(0), "ChainLinkAdapter/Aggregator not set");
+
+        address remAggregator = aggregators[_symbolA][_symbolB];
+        aggregators[_symbolA][_symbolB] = address(0);
+
+        emit RemoveAggregator(
+            _symbolA,
+            _symbolB,
+            remAggregator
         );
     }
 
