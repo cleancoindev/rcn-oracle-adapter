@@ -148,7 +148,7 @@ contract('chainLinkAdapter Contract', function (accounts) {
                     18,
                     { from: owner }
                 ),
-                'Aggregator 0x0 is not valid'
+                'ChainLinkAdapter/Aggregator 0x0 is not valid'
             );
         });
         it('ChainLinkAdapter/Aggregator not set, path not resolved', async function () {
@@ -173,6 +173,56 @@ contract('chainLinkAdapter Contract', function (accounts) {
                     currencyA,
                     currencyB,
                     aggregator,
+                    18,
+                    18,
+                    { from: owner }
+                ),
+                'SetAggregator'
+            );
+            assert.equal(SetAggregator._symbolA, currencyA);
+            assert.equal(SetAggregator._symbolB, currencyB);
+            assert.equal(SetAggregator._aggregator, aggregator);
+            assert.equal(SetAggregator._decimalsA, 18);
+            assert.equal(SetAggregator._decimalsB, 18);
+        });
+        it('Should revert if Aggregator exits', async function () {
+            const currencyA = await symbolToBytes32('RCN');
+            const currencyB = await symbolToBytes32('BTC');
+            const aggregator = aggregator1.address;
+            await tryCatchRevert(
+                () => chainlinkAdapter.setAggregator(
+                    currencyA,
+                    currencyB,
+                    aggregator,
+                    18,
+                    18,
+                    { from: owner }
+                ),
+                'ChainLinkAdapter/Aggregator is already set'
+            );
+        });
+        it('Remove Aggregator', async function () {
+            const currencyA = await symbolToBytes32('RCN');
+            const currencyB = await symbolToBytes32('BTC');
+            const aggregator = await chainlinkAdapter.aggregators(currencyA, currencyB);
+            const RemoveAggregator = await toEvents(
+                chainlinkAdapter.removeAggregator(
+                    currencyA,
+                    currencyB,
+                    { from: owner }
+                ),
+                'RemoveAggregator'
+            );
+            assert.equal(RemoveAggregator._symbolA, currencyA);
+            assert.equal(RemoveAggregator._symbolB, currencyB);
+            assert.equal(RemoveAggregator._aggregator, aggregator);
+            const ra = await chainlinkAdapter.aggregators(currencyA, currencyB);
+            assert.equal(address0x, ra);
+            const SetAggregator = await toEvents(
+                chainlinkAdapter.setAggregator(
+                    currencyA,
+                    currencyB,
+                    aggregator1.address,
                     18,
                     18,
                     { from: owner }
