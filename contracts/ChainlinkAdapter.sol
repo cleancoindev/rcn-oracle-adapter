@@ -64,6 +64,27 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
         );
     }
 
+    function latestTimestamp(bytes32[] calldata path) external view returns (uint256 lastTimestamp)  {
+        uint256 prevTimestamp;
+        for (uint i; i < path.length - 1; i++) {
+            (bytes32 input, bytes32 output) = (path[i], path[i + 1]);
+            (uint256 timestamp0) = getLatestTimestamp(input, output);
+            lastTimestamp = timestamp0 < prevTimestamp || prevTimestamp == 0  ? timestamp0 : prevTimestamp;
+            prevTimestamp = lastTimestamp;
+        }
+    }
+
+    function getLatestTimestamp(bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 lastTimestamp)  {
+        require(aggregators[_symbolA][_symbolB] != address(0) || aggregators[_symbolB][_symbolA] != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
+        AggregatorInterface aggregator;
+        if (aggregators[_symbolA][_symbolB] != address(0)) {
+            aggregator = AggregatorInterface(aggregators[_symbolA][_symbolB]);
+        } else {
+            aggregator = AggregatorInterface(aggregators[_symbolB][_symbolA]);
+        }
+        lastTimestamp = uint256(aggregator.latestTimestamp());
+    }
+
     function getRate (bytes32[] calldata path) external override view returns (uint256 combinedRate)  {
         uint256 prevRate;
         for (uint i; i < path.length - 1; i++) {
