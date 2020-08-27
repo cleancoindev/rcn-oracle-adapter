@@ -6,6 +6,7 @@ import "../interfaces/AggregatorInterface.sol";
 contract FakeAggregator is AggregatorInterface {
 
     int256 public lastAnswer;
+    uint256 public lastTimestamp;
     string public symbolA;
     string public symbolB;
 
@@ -18,12 +19,16 @@ contract FakeAggregator is AggregatorInterface {
         lastAnswer = _answer;
     }
 
+    function setLastTimestamp(uint256 _lastTimestamp) external {
+        lastTimestamp = _lastTimestamp;
+    }
+
     function latestAnswer() external override view returns (int256) {
         return lastAnswer;
     }
 
     function latestTimestamp() external override view returns (uint256) {
-        return 0;
+        return lastTimestamp;
     }
 
     function latestRound() external override view returns (uint256) {

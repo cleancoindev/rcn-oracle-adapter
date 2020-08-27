@@ -63,14 +63,18 @@ contract('chainLinkAdapter Contract', function (accounts) {
         it('getPairLastRate ', async function () {
             const currencyA = await symbolToBytes32('RCN');
             const currencyB = await symbolToBytes32('BTC');
+            const newRate = '5780000000000';
+            await aggregator1.setLatestAnswer(bn(newRate));
             const rate = await chainlinkAdapter.getPairLastRate(currencyA, currencyB);
-            expect(rate).to.eq.BN('5770000000000');
+            expect(rate).to.eq.BN(newRate);
         });
         it('Get Rate from aggregator 1 using getRate() ', async function () {
             const currencyA = await symbolToBytes32('RCN');
             const currencyB = await symbolToBytes32('BTC');
+            const newRate = '5770000000000';
+            await aggregator1.setLatestAnswer(bn(newRate));
             const rate = await chainlinkAdapter.getRate([currencyA, currencyB]);
-            expect(rate).to.eq.BN('5770000000000');
+            expect(rate).to.eq.BN(newRate);
         });
         it('Get combined rate using getRate() path = 3 ', async function () {
             const currencyA = await symbolToBytes32('RCN');
@@ -234,6 +238,44 @@ contract('chainLinkAdapter Contract', function (accounts) {
             assert.equal(SetAggregator._aggregator, aggregator);
             assert.equal(SetAggregator._decimalsA, 18);
             assert.equal(SetAggregator._decimalsB, 18);
+        });
+    });
+    describe('Test lastesTimestamp()', function () {
+        it('get latestTimestamp ', async function () {
+            const currencyA = await symbolToBytes32('RCN');
+            const currencyB = await symbolToBytes32('BTC');
+            const lastTimestampA = '1598100000';
+            await aggregator1.setLastTimestamp(bn(lastTimestampA));
+            const timestamp = await chainlinkAdapter.latestTimestamp([currencyA, currencyB]);
+            expect(timestamp).to.eq.BN(lastTimestampA);
+        });
+        it('GetlatestTimestamp() get min path = 3 ', async function () {
+            const currencyA = await symbolToBytes32('RCN');
+            const currencyB = await symbolToBytes32('BTC');
+            const currencyC = await symbolToBytes32('ARS');
+            const lastTimestampA = '1598200000';
+            const lastTimestampB = '1598100000';
+            await aggregator1.setLastTimestamp(bn(lastTimestampA));
+            await aggregator2.setLastTimestamp(bn(lastTimestampB));
+
+            const timestamp = await chainlinkAdapter.latestTimestamp([currencyA, currencyB, currencyC]);
+            expect(timestamp).to.eq.BN(lastTimestampB);
+        });
+        it('GetlatestTimestamp() get min path = 4 ', async function () {
+            const currencyA = await symbolToBytes32('USDC');
+            const currencyB = await symbolToBytes32('ETH');
+            const currencyC = await symbolToBytes32('USD');
+            const currencyD = await symbolToBytes32('GBP');
+            const lastTimestampA = '1598500000';
+            const lastTimestampB = '1598200000';
+            const lastTimestampC = '1598800000';
+
+            await aggregator3.setLastTimestamp(bn(lastTimestampA));
+            await aggregator4.setLastTimestamp(bn(lastTimestampB));
+            await aggregator5.setLastTimestamp(bn(lastTimestampC));
+
+            const timestamp = await chainlinkAdapter.latestTimestamp([currencyA, currencyB, currencyC, currencyD]);
+            expect(timestamp).to.eq.BN(lastTimestampB);
         });
     });
 });
