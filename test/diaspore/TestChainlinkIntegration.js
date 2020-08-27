@@ -254,4 +254,20 @@ contract('chainLinkAdapter Contract', function (accounts) {
             assert.equal(await oracleInstance.paused(), false);
         });
     });
+    describe('Test lastesTimestamp()', function () {
+        it('get latestTimestamp ', async function () {
+            const usdcOracle = await oracleFactory.symbolToOracle('USDC');
+            const oracleInstance = await MultiSourceOracle.at(usdcOracle);
+
+            const lastTimestampA = '1598500000';
+            const lastTimestampB = '1598200000';
+            const lastTimestampC = '1598800000';
+            await aggregator1.setLastTimestamp(bn(lastTimestampA)); // RCN/BTC
+            await aggregator6.setLastTimestamp(bn(lastTimestampB)); // BTC/ETH
+            await aggregator3.setLastTimestamp(bn(lastTimestampC)); // USDC/ETH
+
+            const timestamp = await oracleInstance.latestTimestamp();
+            expect(timestamp).to.eq.BN(lastTimestampB);
+        });
+    });
 });
