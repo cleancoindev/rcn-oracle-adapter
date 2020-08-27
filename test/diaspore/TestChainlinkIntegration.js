@@ -24,10 +24,10 @@ contract('chainLinkAdapter Contract', function (accounts) {
     let aggregator6;
     let oracleFactory, oracleFactoryUSDC;
 
-    async function setAggregator (symbolA, symbolB, aggregator, decimalsA, decimalsB) {
+    async function setAggregator (symbolA, symbolB, aggregator, multiplierA, multiplierB) {
         const currencyA = await chainlinkAdapter.symbolToBytes32(symbolA);
         const currencyB = await chainlinkAdapter.symbolToBytes32(symbolB);
-        await chainlinkAdapter.setAggregator(currencyA, currencyB, aggregator, decimalsA, decimalsB);
+        await chainlinkAdapter.setAggregator(currencyA, currencyB, aggregator, multiplierA, multiplierB);
     };
 
     async function symbolToBytes32 (symbol) {
@@ -96,9 +96,9 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combRate.mul(bn(10 ** decimals)));
-            const decimalsAdded = await chainlinkAdapter.getAddedDecimals(currencyD);
+            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyD);
             const factoryDecimals = await oracleFactory.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(decimalsAdded));
+            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
         });
 
         it('Test Oracle Factory for RCN , set path [RCN,BTC,ARS] ', async function () {
@@ -127,9 +127,9 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combinedRate.mul(bn(10 ** decimals)));
-            const decimalsAdded = await chainlinkAdapter.getAddedDecimals(currencyC);
+            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyC);
             const factoryDecimals = await oracleFactory.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(decimalsAdded));
+            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
         });
         it('Test Oracle Factory for USDC , set path [USDC,ETH,BTC,RCN] ', async function () {
             const currencyA = await symbolToBytes32('USDC');
@@ -159,9 +159,9 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combRate.mul(bn(10 ** decimals)));
-            const decimalsAdded = await chainlinkAdapter.getAddedDecimals(currencyD);
+            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyD);
             const factoryDecimals = await oracleFactoryUSDC.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(decimalsAdded));
+            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
         });
         it('Test Oracle Factory for USDC , set path [USDC,ETH,BTC,ARS] ', async function () {
             const currencyA = await symbolToBytes32('USDC');
@@ -191,9 +191,9 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combRate.mul(bn(10 ** decimals)));
-            const decimalsAdded = await chainlinkAdapter.getAddedDecimals(currencyD);
+            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyD);
             const factoryDecimals = await oracleFactoryUSDC.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(decimalsAdded));
+            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
         });
     });
 

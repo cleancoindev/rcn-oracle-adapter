@@ -174,8 +174,8 @@ contract MultiSourceOracle is RateOracle, Ownable, Pausable {
             return _upgrade.readSample(_oracleData);
         }
 
-        // Tokens is always base ; base = ibase.mult(oracleAdapter.getAddedDecimals())
-        uint256 base = ibase.mult(oracleAdapter.getAddedDecimals(icurrency));
+        // Tokens is always base ; base = ibase.mult(oracleAdapter.getMultiplier())
+        uint256 base = ibase.mult(oracleAdapter.getMultiplier(icurrency));
         _tokens = base;
         _equivalent = (oracleAdapter.getRate(path)).mult(10 ** idecimals);
     }

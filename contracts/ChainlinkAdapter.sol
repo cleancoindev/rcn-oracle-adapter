@@ -12,39 +12,49 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
     using StringUtils for string;
 
     mapping(bytes32 => mapping(bytes32 => address)) public aggregators;
-    mapping(bytes32 => uint8) public decimals;
+    mapping(bytes32 => uint8) public multiplier;
 
-    event SetAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator, uint8 _decimalsA, uint8 _decimalsB);
+    event SetAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator, uint8 _multiplierA, uint8 _multiplierB);
     event RemoveAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator);
+    event SetMultiplier(bytes32 _symbol, uint8 _multiplier);
 
     function symbolToBytes32(string calldata _symbol) external pure returns (bytes32) {
         return _symbol.toBytes32();
     }
 
-    function getAddedDecimals (bytes32 _symbol) external override view returns (uint256) {
-        return 10 ** uint256(decimals[_symbol]);
+    function getMultiplier (bytes32 _symbol) external override view returns (uint256) {
+        return 10 ** uint256(multiplier[_symbol]);
+    }
+
+    function setMultiplier(bytes32 _symbol, uint8 _multiplier) external override {
+        multiplier[_symbol] = _multiplier;
+        emit SetMultiplier(_symbol, _multiplier);
     }
 
     function setAggregator(
         bytes32 _symbolA,
         bytes32 _symbolB,
         address _aggregator,
-        uint8 _decimalsA,
-        uint8 _decimalsB
+        uint8 _multiplierA,
+        uint8 _multiplierB
     ) external override onlyOwner {
         require(_aggregator != address(0), "ChainLinkAdapter/Aggregator 0x0 is not valid");
         require(aggregators[_symbolA][_symbolB] == address(0), "ChainLinkAdapter/Aggregator is already set");
 
         aggregators[_symbolA][_symbolB] = _aggregator;
-        decimals[_symbolA] = _decimalsA;
-        decimals[_symbolB] = _decimalsB;
+        if (multiplier[_symbolA] == 0) {
+            multiplier[_symbolA] = _multiplierA;
+        }
+        if (multiplier[_symbolA] == 0) {
+            multiplier[_symbolB] = _multiplierB;
+        }
 
         emit SetAggregator(
             _symbolA,
             _symbolB,
             _aggregator,
-            _decimalsA,
-            _decimalsB
+            _multiplierA,
+            _multiplierB
         );
     }
 
@@ -90,7 +100,7 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
         for (uint i; i < path.length - 1; i++) {
             (bytes32 input, bytes32 output) = (path[i], path[i + 1]);
             (uint256 rate0) = _getPairRate(input, output);
-            combinedRate = prevRate > 0 ? _getCombined(prevRate, rate0, decimals[input]) : rate0;
+            combinedRate = prevRate > 0 ? _getCombined(prevRate, rate0, multiplier[input]) : rate0;
             prevRate = combinedRate;
         }
     }
@@ -106,14 +116,14 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
         if (aggregators[input][output] != address(0)) {
             rate = getPairLastRate(input, output);
         } else {
-            uint256 decimals0 = 10 ** uint256(decimals[input]);
-            uint256 decimals1 = 10 ** uint256(decimals[output]);
-            rate = decimals0.mult(decimals1).div(getPairLastRate(output, input));
+            uint256 multiplier0 = 10 ** uint256(multiplier[input]);
+            uint256 multiplier1 = 10 ** uint256(multiplier[output]);
+            rate = multiplier0.mult(multiplier1).div(getPairLastRate(output, input));
         }
     }
 
-    function _getCombined(uint256 rate0, uint256 rate1, uint8 _decimals0) private pure returns (uint256 combinedRate) {
-        combinedRate = rate0.mult(rate1).div(10 ** uint256(_decimals0));
+    function _getCombined(uint256 rate0, uint256 rate1, uint8 _multiplier0) private pure returns (uint256 combinedRate) {
+        combinedRate = rate0.mult(rate1).div(10 ** uint256(_multiplier0));
     }
 }
 
