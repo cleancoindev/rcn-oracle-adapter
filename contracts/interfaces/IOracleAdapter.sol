@@ -13,6 +13,7 @@ interface IOracleAdapter {
 
   function removeAggregator(bytes32 _symbolA, bytes32 _symbolB) external;
   function getRate (bytes32[] calldata path) external view returns (uint256);
+  function latestTimestamp (bytes32[] calldata path) external view returns (uint256);
   function getAddedDecimals (bytes32 _symbol) external view returns (uint256);
 
   event RemoveAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator);

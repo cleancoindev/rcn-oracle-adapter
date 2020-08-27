@@ -191,12 +191,12 @@ contract MultiSourceOracle is RateOracle, Ownable, Pausable {
         (_tokens, _equivalent) = readSample(new bytes(0));
     }
 
-      /**
+    /**
      * @dev Reads the last timestamp when the oracle was updated
      * @return timestamp last updated
      * @notice If the sample rate is get from many oracles , the latest timestamp returns the older one
      */
     function latestTimestamp() external view returns (uint256 timestamp) {
-         timestamp = oracleAdapter.latestTimestamp(path);
+        timestamp = oracleAdapter.latestTimestamp(path);
     }
 }

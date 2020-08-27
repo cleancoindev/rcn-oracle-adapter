@@ -64,7 +64,7 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
         );
     }
 
-    function latestTimestamp(bytes32[] calldata path) external view returns (uint256 lastTimestamp)  {
+    function latestTimestamp(bytes32[] calldata path) external override view returns (uint256 lastTimestamp)  {
         uint256 prevTimestamp;
         for (uint i; i < path.length - 1; i++) {
             (bytes32 input, bytes32 output) = (path[i], path[i + 1]);
