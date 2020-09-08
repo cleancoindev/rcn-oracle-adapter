@@ -1,5 +1,5 @@
-const ChainlinkAdapter = artifacts.require('ChainlinkAdapter');
-const FakeAggregator = artifacts.require('FakeAggregator');
+const ChainlinkAdapterV3 = artifacts.require('ChainlinkAdapterV3');
+const FakeAggregatorV3 = artifacts.require('FakeAggregatorV3');
 
 const {
     bn,
@@ -7,14 +7,14 @@ const {
     toEvents,
     expect,
     address0x,
-} = require('./Helper.js');
+} = require('../Helper.js');
 const { assert } = require('chai');
 
 function toDecimals (stringNumber, decimals) {
     return bn(stringNumber).mul(bn(10).pow(bn(decimals)));
 }
 
-contract('chainLinkAdapter Contract', function (accounts) {
+contract('chainLinkAdapterV3 Contract', function (accounts) {
     const owner = accounts[0];
 
     let chainlinkAdapter;
@@ -36,25 +36,25 @@ contract('chainLinkAdapter Contract', function (accounts) {
     }
 
     before('Deploy contracts', async function () {
-        chainlinkAdapter = await ChainlinkAdapter.new();
+        chainlinkAdapter = await ChainlinkAdapterV3.new();
 
-        aggregator1 = await FakeAggregator.new('RCN', 'BTC');
+        aggregator1 = await FakeAggregatorV3.new('RCN', 'BTC', '18', 'RCN/BTC', '1');
         await aggregator1.setLatestAnswer(bn('5770000000000'));
         await setAggregator('RCN', 'BTC', aggregator1.address, '18', '18');
 
-        aggregator2 = await FakeAggregator.new('BTC', 'ARS');
+        aggregator2 = await FakeAggregatorV3.new('BTC', 'ARS', '18', 'BTC/ARS', '1');
         await aggregator2.setLatestAnswer(bn('1538461538000000000000000'));
         await setAggregator('BTC', 'ARS', aggregator2.address, '18', '18');
 
-        aggregator3 = await FakeAggregator.new('USDC', 'ETH');
+        aggregator3 = await FakeAggregatorV3.new('USDC', 'ETH', '18', 'USDC/ETH', '1');
         await aggregator3.setLatestAnswer(bn('2438295000000000'));
         await setAggregator('USDC', 'ETH', aggregator3.address, '18', '18');
 
-        aggregator4 = await FakeAggregator.new('ETH', 'USD');
+        aggregator4 = await FakeAggregatorV3.new('ETH', 'USD', '8', 'ETH/USD', '1');
         await aggregator4.setLatestAnswer(bn('4094400000'));
         await setAggregator('ETH', 'USD', aggregator4.address, '18', '8');
 
-        aggregator5 = await FakeAggregator.new('GBP', 'USD');
+        aggregator5 = await FakeAggregatorV3.new('GBP', 'USD', '8', 'GBP/USD', '1');
         await aggregator5.setLatestAnswer(bn('131019000'));
         await setAggregator('GBP', 'USD', aggregator5.address, '18', '8');
     });

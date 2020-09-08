@@ -5,9 +5,11 @@ import "../utils/StringUtils.sol";
 import "./RateOracle.sol";
 import "../interfaces/IOracleAdapter.sol";
 import "../utils/SafeMath.sol";
+import "../interfaces/PausedProvided.sol";
+import "../commons/Pausable.sol";
 
 
-contract MultiSourceOracle is RateOracle, Ownable {
+contract MultiSourceOracle is RateOracle, Ownable, Pausable {
     using StringUtils for string;
     using SafeMath for uint256;
 
@@ -16,6 +18,8 @@ contract MultiSourceOracle is RateOracle, Ownable {
     uint256 public ibase;
     bytes32[] public path;
     IOracleAdapter public oracleAdapter;
+    PausedProvided public pausedProvided;
+
 
     string private isymbol;
     string private iname;
@@ -49,6 +53,7 @@ contract MultiSourceOracle is RateOracle, Ownable {
         imaintainer = _maintainer;
         path = _path;
         ibase = _base;
+        pausedProvided = PausedProvided(msg.sender);
     }
 
     /**
@@ -153,7 +158,7 @@ contract MultiSourceOracle is RateOracle, Ownable {
 
     /**
      * @dev Reads the rate provided by the Oracle
-     *   this being the median of the last rate provided by each signer
+     *   this being the result of the resolved path by the oracle-adapter
      * @param _oracleData Oracle auxiliar data defined in the RCN Oracle spec
      *   not used for this oracle, but forwarded in case of upgrade.
      * @return _tokens _equivalent `_equivalent` is the median of the values provided by the signer
@@ -161,7 +166,7 @@ contract MultiSourceOracle is RateOracle, Ownable {
      */
     function readSample(bytes memory _oracleData) public override view returns (uint256 _tokens, uint256 _equivalent) {
         // Check if paused
-        // require(!paused && !pausedProvider.isPaused(), "contract paused");
+        require(!paused && !pausedProvided.isPaused(), "contract paused");
 
         // Check if Oracle contract has been upgraded
         RateOracle _upgrade = upgrade;
@@ -169,20 +174,29 @@ contract MultiSourceOracle is RateOracle, Ownable {
             return _upgrade.readSample(_oracleData);
         }
 
-        // Tokens is always base ; base = ibase.mult(oracleAdapter.getAddedDecimals())
-        uint256 base = ibase.mult(oracleAdapter.getAddedDecimals(icurrency));
+        // Tokens is always base ; base = ibase.mult(oracleAdapter.getMultiplier())
+        uint256 base = ibase.mult(oracleAdapter.getMultiplier(icurrency));
         _tokens = base;
         _equivalent = (oracleAdapter.getRate(path)).mult(10 ** idecimals);
     }
 
     /**
      * @dev Reads the rate provided by the Oracle
-     *   this being the median of the last rate provided by each signer
+     *   this being the result of the resolved path by the oracle-adapter
      * @return _tokens _equivalent `_equivalent` is the median of the values provided by the signer
      *   `_tokens` are equivalent to `_equivalent` in the currency of the Oracle
      * @notice This Oracle accepts reading the sample without auxiliary data
      */
     function readSample() external view returns (uint256 _tokens, uint256 _equivalent) {
         (_tokens, _equivalent) = readSample(new bytes(0));
+    }
+
+    /**
+     * @dev Reads the last timestamp when the oracle was updated
+     * @return timestamp last updated
+     * @notice If the sample rate is get from many oracles , the latest timestamp returns the older one
+     */
+    function latestTimestamp() external view returns (uint256 timestamp) {
+        timestamp = oracleAdapter.latestTimestamp(path);
     }
 }

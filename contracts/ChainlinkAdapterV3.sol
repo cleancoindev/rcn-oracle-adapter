@@ -1,13 +1,13 @@
 pragma solidity ^0.6.6;
 
 import "./commons/Ownable.sol";
-import "./interfaces/AggregatorInterface.sol";
+import "./interfaces/AggregatorV3Interface.sol";
 import "./utils/SafeMath.sol";
 import "./utils/StringUtils.sol";
 import "./interfaces/IOracleAdapter.sol";
 
 
-contract ChainlinkAdapter is Ownable, IOracleAdapter {
+contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
     using SafeMath for uint256;
     using StringUtils for string;
 
@@ -86,13 +86,13 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
 
     function getLatestTimestamp(bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 lastTimestamp)  {
         require(aggregators[_symbolA][_symbolB] != address(0) || aggregators[_symbolB][_symbolA] != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
-        AggregatorInterface aggregator;
+        AggregatorV3Interface aggregator;
         if (aggregators[_symbolA][_symbolB] != address(0)) {
-            aggregator = AggregatorInterface(aggregators[_symbolA][_symbolB]);
+            aggregator = AggregatorV3Interface(aggregators[_symbolA][_symbolB]);
         } else {
-            aggregator = AggregatorInterface(aggregators[_symbolB][_symbolA]);
+            aggregator = AggregatorV3Interface(aggregators[_symbolB][_symbolA]);
         }
-        lastTimestamp = uint256(aggregator.latestTimestamp());
+        (,,,lastTimestamp,) = aggregator.latestRoundData();
     }
 
     function getRate (bytes32[] calldata path) external override view returns (uint256 combinedRate)  {
@@ -106,8 +106,9 @@ contract ChainlinkAdapter is Ownable, IOracleAdapter {
     }
 
     function getPairLastRate (bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 answer)  {
-        AggregatorInterface aggregator = AggregatorInterface(aggregators[_symbolA][_symbolB]);
-        answer = uint256(aggregator.latestAnswer());
+        AggregatorV3Interface aggregator = AggregatorV3Interface(aggregators[_symbolA][_symbolB]);
+        (,int256 rate,,,) = aggregator.latestRoundData();
+        answer = uint256(rate);
     }
 
     function _getPairRate(bytes32 input, bytes32 output) private view returns (uint256 rate) {
