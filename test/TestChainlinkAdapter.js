@@ -24,10 +24,10 @@ contract('chainLinkAdapter Contract', function (accounts) {
     let aggregator4;
     let aggregator5;
 
-    async function setAggregator (symbolA, symbolB, aggregator, decimalsA, decimalsB) {
+    async function setAggregator (symbolA, symbolB, aggregator, multiplierA, multiplierB) {
         const currencyA = await chainlinkAdapter.symbolToBytes32(symbolA);
         const currencyB = await chainlinkAdapter.symbolToBytes32(symbolB);
-        await chainlinkAdapter.setAggregator(currencyA, currencyB, aggregator, decimalsA, decimalsB);
+        await chainlinkAdapter.setAggregator(currencyA, currencyB, aggregator, multiplierA, multiplierB);
     };
 
     async function symbolToBytes32 (symbol) {
@@ -63,14 +63,18 @@ contract('chainLinkAdapter Contract', function (accounts) {
         it('getPairLastRate ', async function () {
             const currencyA = await symbolToBytes32('RCN');
             const currencyB = await symbolToBytes32('BTC');
+            const newRate = '5780000000000';
+            await aggregator1.setLatestAnswer(bn(newRate));
             const rate = await chainlinkAdapter.getPairLastRate(currencyA, currencyB);
-            expect(rate).to.eq.BN('5770000000000');
+            expect(rate).to.eq.BN(newRate);
         });
         it('Get Rate from aggregator 1 using getRate() ', async function () {
             const currencyA = await symbolToBytes32('RCN');
             const currencyB = await symbolToBytes32('BTC');
+            const newRate = '5770000000000';
+            await aggregator1.setLatestAnswer(bn(newRate));
             const rate = await chainlinkAdapter.getRate([currencyA, currencyB]);
-            expect(rate).to.eq.BN('5770000000000');
+            expect(rate).to.eq.BN(newRate);
         });
         it('Get combined rate using getRate() path = 3 ', async function () {
             const currencyA = await symbolToBytes32('RCN');
@@ -80,8 +84,8 @@ contract('chainLinkAdapter Contract', function (accounts) {
 
             const rateA = await chainlinkAdapter.getRate([currencyA, currencyB]);
             const rateB = await chainlinkAdapter.getRate([currencyB, currencyC]);
-            const decimalsrateA = await chainlinkAdapter.decimals(currencyB);
-            const combRate = bn(rateA).mul(bn(rateB)).div(toDecimals('1', decimalsrateA));
+            const multiplierrateA = await chainlinkAdapter.multiplier(currencyB);
+            const combRate = bn(rateA).mul(bn(rateB)).div(toDecimals('1', multiplierrateA));
 
             expect(combinedRate).to.eq.BN(combRate);
         });
@@ -93,9 +97,9 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const rate = await chainlinkAdapter.getRate([currencyA, currencyB]);
 
             const rateDirect = await chainlinkAdapter.getRate([currencyB, currencyA]);
-            const decimalsA = await chainlinkAdapter.decimals(currencyA);
-            const decimalsB = await chainlinkAdapter.decimals(currencyB);
-            const reverseRate = (toDecimals('1', decimalsA)).mul(toDecimals('1', decimalsB)).div(rateDirect);
+            const multiplierA = await chainlinkAdapter.multiplier(currencyA);
+            const multiplierB = await chainlinkAdapter.multiplier(currencyB);
+            const reverseRate = (toDecimals('1', multiplierA)).mul(toDecimals('1', multiplierB)).div(rateDirect);
 
             expect(rate).to.eq.BN(reverseRate);
         });
@@ -110,10 +114,10 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const rateB = await chainlinkAdapter.getRate([currencyB, currencyC]);
             const rateC = await chainlinkAdapter.getRate([currencyC, currencyD]);
 
-            const decimalsRateA = await chainlinkAdapter.decimals(currencyB);
-            const combRate1 = bn(rateA).mul(bn(rateB)).div(toDecimals('1', decimalsRateA));
-            const decimalscombRate1 = await chainlinkAdapter.decimals(currencyC);
-            const combRate2 = bn(combRate1).mul(bn(rateC)).div(toDecimals('1', decimalscombRate1));
+            const multiplierRateA = await chainlinkAdapter.multiplier(currencyB);
+            const combRate1 = bn(rateA).mul(bn(rateB)).div(toDecimals('1', multiplierRateA));
+            const multipliercombRate1 = await chainlinkAdapter.multiplier(currencyC);
+            const combRate2 = bn(combRate1).mul(bn(rateC)).div(toDecimals('1', multipliercombRate1));
 
             expect(rate).to.eq.BN(combRate2);
         });
@@ -148,7 +152,7 @@ contract('chainLinkAdapter Contract', function (accounts) {
                     18,
                     { from: owner }
                 ),
-                'Aggregator 0x0 is not valid'
+                'ChainLinkAdapter/Aggregator 0x0 is not valid'
             );
         });
         it('ChainLinkAdapter/Aggregator not set, path not resolved', async function () {
@@ -182,8 +186,96 @@ contract('chainLinkAdapter Contract', function (accounts) {
             assert.equal(SetAggregator._symbolA, currencyA);
             assert.equal(SetAggregator._symbolB, currencyB);
             assert.equal(SetAggregator._aggregator, aggregator);
-            assert.equal(SetAggregator._decimalsA, 18);
-            assert.equal(SetAggregator._decimalsB, 18);
+            assert.equal(SetAggregator._multiplierA, 18);
+            assert.equal(SetAggregator._multiplierB, 18);
+        });
+        it('Should revert if Aggregator exits', async function () {
+            const currencyA = await symbolToBytes32('RCN');
+            const currencyB = await symbolToBytes32('BTC');
+            const aggregator = aggregator1.address;
+            await tryCatchRevert(
+                () => chainlinkAdapter.setAggregator(
+                    currencyA,
+                    currencyB,
+                    aggregator,
+                    18,
+                    18,
+                    { from: owner }
+                ),
+                'ChainLinkAdapter/Aggregator is already set'
+            );
+        });
+        it('Remove Aggregator', async function () {
+            const currencyA = await symbolToBytes32('RCN');
+            const currencyB = await symbolToBytes32('BTC');
+            const aggregator = await chainlinkAdapter.aggregators(currencyA, currencyB);
+            const RemoveAggregator = await toEvents(
+                chainlinkAdapter.removeAggregator(
+                    currencyA,
+                    currencyB,
+                    { from: owner }
+                ),
+                'RemoveAggregator'
+            );
+            assert.equal(RemoveAggregator._symbolA, currencyA);
+            assert.equal(RemoveAggregator._symbolB, currencyB);
+            assert.equal(RemoveAggregator._aggregator, aggregator);
+            const ra = await chainlinkAdapter.aggregators(currencyA, currencyB);
+            assert.equal(address0x, ra);
+            const SetAggregator = await toEvents(
+                chainlinkAdapter.setAggregator(
+                    currencyA,
+                    currencyB,
+                    aggregator1.address,
+                    18,
+                    18,
+                    { from: owner }
+                ),
+                'SetAggregator'
+            );
+            assert.equal(SetAggregator._symbolA, currencyA);
+            assert.equal(SetAggregator._symbolB, currencyB);
+            assert.equal(SetAggregator._aggregator, aggregator);
+            assert.equal(SetAggregator._multiplierA, 18);
+            assert.equal(SetAggregator._multiplierB, 18);
+        });
+    });
+    describe('Test lastesTimestamp()', function () {
+        it('get latestTimestamp ', async function () {
+            const currencyA = await symbolToBytes32('RCN');
+            const currencyB = await symbolToBytes32('BTC');
+            const lastTimestampA = '1598100000';
+            await aggregator1.setLastTimestamp(bn(lastTimestampA));
+            const timestamp = await chainlinkAdapter.latestTimestamp([currencyA, currencyB]);
+            expect(timestamp).to.eq.BN(lastTimestampA);
+        });
+        it('GetlatestTimestamp() get min path = 3 ', async function () {
+            const currencyA = await symbolToBytes32('RCN');
+            const currencyB = await symbolToBytes32('BTC');
+            const currencyC = await symbolToBytes32('ARS');
+            const lastTimestampA = '1598200000';
+            const lastTimestampB = '1598100000';
+            await aggregator1.setLastTimestamp(bn(lastTimestampA));
+            await aggregator2.setLastTimestamp(bn(lastTimestampB));
+
+            const timestamp = await chainlinkAdapter.latestTimestamp([currencyA, currencyB, currencyC]);
+            expect(timestamp).to.eq.BN(lastTimestampB);
+        });
+        it('GetlatestTimestamp() get min path = 4 ', async function () {
+            const currencyA = await symbolToBytes32('USDC');
+            const currencyB = await symbolToBytes32('ETH');
+            const currencyC = await symbolToBytes32('USD');
+            const currencyD = await symbolToBytes32('GBP');
+            const lastTimestampA = '1598500000';
+            const lastTimestampB = '1598200000';
+            const lastTimestampC = '1598800000';
+
+            await aggregator3.setLastTimestamp(bn(lastTimestampA));
+            await aggregator4.setLastTimestamp(bn(lastTimestampB));
+            await aggregator5.setLastTimestamp(bn(lastTimestampC));
+
+            const timestamp = await chainlinkAdapter.latestTimestamp([currencyA, currencyB, currencyC, currencyD]);
+            expect(timestamp).to.eq.BN(lastTimestampB);
         });
     });
 });

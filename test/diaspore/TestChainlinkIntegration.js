@@ -6,9 +6,11 @@ const MultiSourceOracle = artifacts.require('MultiSourceOracle');
 const {
     bn,
     toEvents,
+    tryCatchRevert,
     expect,
     address0x,
 } = require('../Helper.js');
+const { assert } = require('chai');
 
 contract('chainLinkAdapter Contract', function (accounts) {
     const owner = accounts[0];
@@ -22,10 +24,10 @@ contract('chainLinkAdapter Contract', function (accounts) {
     let aggregator6;
     let oracleFactory, oracleFactoryUSDC;
 
-    async function setAggregator (symbolA, symbolB, aggregator, decimalsA, decimalsB) {
+    async function setAggregator (symbolA, symbolB, aggregator, multiplierA, multiplierB) {
         const currencyA = await chainlinkAdapter.symbolToBytes32(symbolA);
         const currencyB = await chainlinkAdapter.symbolToBytes32(symbolB);
-        await chainlinkAdapter.setAggregator(currencyA, currencyB, aggregator, decimalsA, decimalsB);
+        await chainlinkAdapter.setAggregator(currencyA, currencyB, aggregator, multiplierA, multiplierB);
     };
 
     async function symbolToBytes32 (symbol) {
@@ -94,9 +96,9 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combRate.mul(bn(10 ** decimals)));
-            const decimalsAdded = await chainlinkAdapter.getAddedDecimals(currencyD);
+            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyD);
             const factoryDecimals = await oracleFactory.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(decimalsAdded));
+            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
         });
 
         it('Test Oracle Factory for RCN , set path [RCN,BTC,ARS] ', async function () {
@@ -125,9 +127,9 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combinedRate.mul(bn(10 ** decimals)));
-            const decimalsAdded = await chainlinkAdapter.getAddedDecimals(currencyC);
+            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyC);
             const factoryDecimals = await oracleFactory.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(decimalsAdded));
+            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
         });
         it('Test Oracle Factory for USDC , set path [USDC,ETH,BTC,RCN] ', async function () {
             const currencyA = await symbolToBytes32('USDC');
@@ -157,9 +159,9 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combRate.mul(bn(10 ** decimals)));
-            const decimalsAdded = await chainlinkAdapter.getAddedDecimals(currencyD);
+            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyD);
             const factoryDecimals = await oracleFactoryUSDC.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(decimalsAdded));
+            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
         });
         it('Test Oracle Factory for USDC , set path [USDC,ETH,BTC,ARS] ', async function () {
             const currencyA = await symbolToBytes32('USDC');
@@ -189,9 +191,83 @@ contract('chainLinkAdapter Contract', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combRate.mul(bn(10 ** decimals)));
-            const decimalsAdded = await chainlinkAdapter.getAddedDecimals(currencyD);
+            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyD);
             const factoryDecimals = await oracleFactoryUSDC.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(decimalsAdded));
+            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
+        });
+    });
+
+    describe('Test pausable ', async function () {
+        it('Test pause ecosystem ', async function () {
+            // Pause ecosystem
+            assert.equal(await oracleFactory.paused(), false);
+            await oracleFactory.pause({ from: owner });
+            assert.equal(await oracleFactory.paused(), true);
+
+            await tryCatchRevert(
+                () => oracleFactory.start(
+                    { from: accounts[1] }
+                ),
+                'Ownable: caller is not the owner'
+            );
+
+            const usdcOracle = await oracleFactory.symbolToOracle('USDC');
+            const oracleInstance = await MultiSourceOracle.at(usdcOracle);
+
+            await tryCatchRevert(
+                () => oracleInstance.readSample(
+                    [],
+                    { from: owner }
+                ),
+                'contract paused'
+            );
+
+            // start ecosystem
+            await oracleFactory.start({ from: owner });
+            assert.equal(await oracleFactory.paused(), false);
+        });
+        it('Test pause oracle ', async function () {
+            const usdcOracle = await oracleFactory.symbolToOracle('USDC');
+            const oracleInstance = await MultiSourceOracle.at(usdcOracle);
+            assert.equal(await oracleInstance.paused(), false);
+
+            await tryCatchRevert(
+                () => oracleFactory.pauseOracle(
+                    usdcOracle,
+                    { from: accounts[1] }
+                ),
+                'not authorized to pause'
+            );
+
+            await oracleFactory.pauseOracle(usdcOracle);
+            assert.equal(await oracleInstance.paused(), true);
+
+            await tryCatchRevert(
+                () => oracleInstance.readSample(
+                    [],
+                    { from: owner }
+                ),
+                'contract paused'
+            );
+
+            await oracleFactory.startOracle(usdcOracle);
+            assert.equal(await oracleInstance.paused(), false);
+        });
+    });
+    describe('Test lastesTimestamp()', function () {
+        it('get latestTimestamp ', async function () {
+            const usdcOracle = await oracleFactory.symbolToOracle('USDC');
+            const oracleInstance = await MultiSourceOracle.at(usdcOracle);
+
+            const lastTimestampA = '1598500000';
+            const lastTimestampB = '1598200000';
+            const lastTimestampC = '1598800000';
+            await aggregator1.setLastTimestamp(bn(lastTimestampA)); // RCN/BTC
+            await aggregator6.setLastTimestamp(bn(lastTimestampB)); // BTC/ETH
+            await aggregator3.setLastTimestamp(bn(lastTimestampC)); // USDC/ETH
+
+            const timestamp = await oracleInstance.latestTimestamp();
+            expect(timestamp).to.eq.BN(lastTimestampB);
         });
     });
 });

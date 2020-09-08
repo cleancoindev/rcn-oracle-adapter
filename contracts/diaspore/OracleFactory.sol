@@ -1,9 +1,11 @@
 pragma solidity ^0.6.6;
 
 import "./MultiSourceOracle.sol";
+import "../commons/Pausable.sol";
+import "../interfaces/PausedProvided.sol";
 
 
-contract OracleFactory is Ownable {
+contract OracleFactory is Ownable, Pausable, PausedProvided {
     mapping(string => address) public symbolToOracle;
     mapping(address => string) public oracleToSymbol;
 
@@ -30,6 +32,15 @@ contract OracleFactory is Ownable {
         string _maintainer,
         address _token,
         bytes32[] _path
+    );
+
+    event OraclePaused(
+        address indexed _oracle,
+        address _pauser
+    );
+
+    event OracleStarted(
+        address indexed _oracle
     );
 
     string public baseToken;
@@ -93,6 +104,40 @@ contract OracleFactory is Ownable {
             _maintainer,
             _path
         );
+    }
+
+    /**
+     * @return true if the Oracle ecosystem is paused
+     * @notice Used by PausedProvided and readed by the Oracles on each `readSample()`
+     */
+    function isPaused() external override view returns (bool) {
+        return paused;
+    }
+
+    /**
+     * @dev Pauses the given `_oracle`
+     * @param _oracle oracle address to be paused
+     * @notice Acts as a proxy of `_oracle.pause`
+     */
+    function pauseOracle(address _oracle) external {
+        require(
+            canPause[msg.sender] ||
+            msg.sender == _owner,
+            "not authorized to pause"
+        );
+
+        MultiSourceOracle(_oracle).pause();
+        emit OraclePaused(_oracle, msg.sender);
+    }
+
+    /**
+     * @dev Starts the given `_oracle`
+     * @param _oracle oracle address to be started
+     * @notice Acts as a proxy of `_oracle.start`
+     */
+    function startOracle(address _oracle) external onlyOwner {
+        MultiSourceOracle(_oracle).start();
+        emit OracleStarted(_oracle);
     }
 
     /**
