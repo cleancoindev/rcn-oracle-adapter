@@ -14,7 +14,7 @@ function toDecimals (stringNumber, decimals) {
     return bn(stringNumber).mul(bn(10).pow(bn(decimals)));
 }
 
-contract('chainLinkAdapter Contract', function (accounts) {
+contract('chainLinkAdapterV3 Contract', function (accounts) {
     const owner = accounts[0];
 
     let chainlinkAdapter;
@@ -42,7 +42,7 @@ contract('chainLinkAdapter Contract', function (accounts) {
         await aggregator1.setLatestAnswer(bn('5770000000000'));
         await setAggregator('RCN', 'BTC', aggregator1.address, '18', '18');
 
-        aggregator2 = await FakeAggregatorV3.new('BTC', 'ARS','18', 'BTC/ARS', '1');
+        aggregator2 = await FakeAggregatorV3.new('BTC', 'ARS', '18', 'BTC/ARS', '1');
         await aggregator2.setLatestAnswer(bn('1538461538000000000000000'));
         await setAggregator('BTC', 'ARS', aggregator2.address, '18', '18');
 

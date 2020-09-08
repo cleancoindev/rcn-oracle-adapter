@@ -59,12 +59,12 @@ contract FakeAggregatorV3 is AggregatorV3Interface {
         uint256 updatedAt,
         uint80 answeredInRound
         ) {
-            roundId = _roundId;
-            answer = lastAnswer;
-            startedAt = lastTimestamp;
-            updatedAt = lastTimestamp;
-            answeredInRound = _roundId;
-        }
+        roundId = _roundId;
+        answer = lastAnswer;
+        startedAt = lastTimestamp;
+        updatedAt = lastTimestamp;
+        answeredInRound = _roundId;
+    }
     function latestRoundData()
         external
         override
@@ -76,10 +76,10 @@ contract FakeAggregatorV3 is AggregatorV3Interface {
         uint256 updatedAt,
         uint80 answeredInRound
         ) {
-            roundId = 1;
-            answer = lastAnswer;
-            startedAt = lastTimestamp;
-            updatedAt = lastTimestamp;
-            answeredInRound = 1;
-        }
+        roundId = 1;
+        answer = lastAnswer;
+        startedAt = lastTimestamp;
+        updatedAt = lastTimestamp;
+        answeredInRound = 1;
+    }
 }
