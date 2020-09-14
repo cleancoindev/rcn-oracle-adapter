@@ -26,7 +26,7 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
         return 10 ** uint256(multiplier[_symbol]);
     }
 
-    function setMultiplier(bytes32 _symbol, uint8 _multiplier) external override {
+    function setMultiplier(bytes32 _symbol, uint8 _multiplier) external override onlyOwner {
         multiplier[_symbol] = _multiplier;
         emit SetMultiplier(_symbol, _multiplier);
     }
