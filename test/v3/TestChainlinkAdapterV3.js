@@ -122,7 +122,17 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
             expect(rate).to.eq.BN(combRate2);
         });
     });
-    describe('test reverts ', async function () {
+    describe('Test reverts', async function () {
+        it('Only owner can call set multiplier', async function () {
+            await tryCatchRevert(
+                () => chainlinkAdapter.setMultiplier(
+                    '0x0',
+                    1,
+                    { from: accounts[9] }
+                ),
+                'Ownable: caller is not the owner'
+            );
+        });
         it('Only owner can call set aggregator', async function () {
             const currencyA = await symbolToBytes32('symA');
             const currencyB = await symbolToBytes32('symB');
@@ -165,6 +175,26 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
                 ),
                 'ChainLinkAdapter/Aggregator not set, path not resolved'
             );
+        });
+    });
+    describe('Function setMultiplier', function () {
+        it('Should set a Multiplier', async function () {
+            const currency = await symbolToBytes32('Test Symbol');
+            const multiplier = 1;
+
+            const SetMultiplier = await toEvents(
+                chainlinkAdapter.setMultiplier(
+                    currency,
+                    multiplier,
+                    { from: owner }
+                ),
+                'SetMultiplier'
+            );
+
+            assert.equal(SetMultiplier._symbol, currency);
+            assert.equal(SetMultiplier._multiplier, multiplier);
+
+            assert.equal(await chainlinkAdapter.multiplier(currency), multiplier);
         });
     });
     describe('Function setAggregator', function () {

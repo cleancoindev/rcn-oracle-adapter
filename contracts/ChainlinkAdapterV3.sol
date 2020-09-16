@@ -22,11 +22,11 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
         return _symbol.toBytes32();
     }
 
-    function getMultiplier (bytes32 _symbol) external override view returns (uint256) {
+    function getMultiplier(bytes32 _symbol) external override view returns (uint256) {
         return 10 ** uint256(multiplier[_symbol]);
     }
 
-    function setMultiplier(bytes32 _symbol, uint8 _multiplier) external override {
+    function setMultiplier(bytes32 _symbol, uint8 _multiplier) external override onlyOwner {
         multiplier[_symbol] = _multiplier;
         emit SetMultiplier(_symbol, _multiplier);
     }
@@ -95,7 +95,7 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
         (,,,lastTimestamp,) = aggregator.latestRoundData();
     }
 
-    function getRate (bytes32[] calldata path) external override view returns (uint256 combinedRate)  {
+    function getRate(bytes32[] calldata path) external override view returns (uint256 combinedRate)  {
         uint256 prevRate;
         for (uint i; i < path.length - 1; i++) {
             (bytes32 input, bytes32 output) = (path[i], path[i + 1]);
@@ -105,7 +105,7 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
         }
     }
 
-    function getPairLastRate (bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 answer)  {
+    function getPairLastRate(bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 answer)  {
         AggregatorV3Interface aggregator = AggregatorV3Interface(aggregators[_symbolA][_symbolB]);
         (,int256 rate,,,) = aggregator.latestRoundData();
         answer = uint256(rate);
@@ -127,4 +127,3 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
         combinedRate = rate0.mult(rate1).div(10 ** uint256(_multiplier0));
     }
 }
-
