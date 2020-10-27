@@ -24,10 +24,10 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
     let aggregator4;
     let aggregator5;
 
-    async function setAggregator (symbolA, symbolB, aggregator, multiplierA, multiplierB) {
+    async function setAggregator (symbolA, symbolB, aggregator) {
         const currencyA = await chainlinkAdapter.symbolToBytes32(symbolA);
         const currencyB = await chainlinkAdapter.symbolToBytes32(symbolB);
-        await chainlinkAdapter.setAggregator(currencyA, currencyB, aggregator, multiplierA, multiplierB);
+        await chainlinkAdapter.setAggregator(currencyA, currencyB, aggregator);
     };
 
     async function symbolToBytes32 (symbol) {
@@ -40,23 +40,23 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
 
         aggregator1 = await FakeAggregatorV3.new('RCN', 'BTC', '18', 'RCN/BTC', '1');
         await aggregator1.setLatestAnswer(bn('5770000000000'));
-        await setAggregator('RCN', 'BTC', aggregator1.address, '18', '18');
+        await setAggregator('RCN', 'BTC', aggregator1.address);
 
         aggregator2 = await FakeAggregatorV3.new('BTC', 'ARS', '18', 'BTC/ARS', '1');
         await aggregator2.setLatestAnswer(bn('1538461538000000000000000'));
-        await setAggregator('BTC', 'ARS', aggregator2.address, '18', '18');
+        await setAggregator('BTC', 'ARS', aggregator2.address);
 
         aggregator3 = await FakeAggregatorV3.new('USDC', 'ETH', '18', 'USDC/ETH', '1');
         await aggregator3.setLatestAnswer(bn('2438295000000000'));
-        await setAggregator('USDC', 'ETH', aggregator3.address, '18', '18');
+        await setAggregator('USDC', 'ETH', aggregator3.address);
 
         aggregator4 = await FakeAggregatorV3.new('ETH', 'USD', '8', 'ETH/USD', '1');
-        await aggregator4.setLatestAnswer(bn('4094400000'));
-        await setAggregator('ETH', 'USD', aggregator4.address, '18', '8');
+        await aggregator4.setLatestAnswer(bn('40459747073')); 
+        await setAggregator('ETH', 'USD', aggregator4.address);
 
         aggregator5 = await FakeAggregatorV3.new('GBP', 'USD', '8', 'GBP/USD', '1');
         await aggregator5.setLatestAnswer(bn('131019000'));
-        await setAggregator('GBP', 'USD', aggregator5.address, '18', '8');
+        await setAggregator('GBP', 'USD', aggregator5.address);
     });
 
     describe('Test getRate() ', async function () {
@@ -84,9 +84,8 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
 
             const rateA = await chainlinkAdapter.getRate([currencyA, currencyB]);
             const rateB = await chainlinkAdapter.getRate([currencyB, currencyC]);
-            const multiplierrateA = await chainlinkAdapter.multiplier(currencyB);
+            const multiplierrateA = await chainlinkAdapter.getDecimals(currencyA, currencyB);
             const combRate = bn(rateA).mul(bn(rateB)).div(toDecimals('1', multiplierrateA));
-
             expect(combinedRate).to.eq.BN(combRate);
         });
         it('Get reverse rate', async function () {
@@ -97,12 +96,11 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
             const rate = await chainlinkAdapter.getRate([currencyA, currencyB]);
 
             const rateDirect = await chainlinkAdapter.getRate([currencyB, currencyA]);
-            const multiplierA = await chainlinkAdapter.multiplier(currencyA);
-            const multiplierB = await chainlinkAdapter.multiplier(currencyB);
-            const reverseRate = (toDecimals('1', multiplierA)).mul(toDecimals('1', multiplierB)).div(rateDirect);
-
+            const decimals = await chainlinkAdapter.getDecimals(currencyB, currencyA);
+            const reverseRate = bn(10).pow(bn(2).mul(decimals)).div(rateDirect);
             expect(rate).to.eq.BN(reverseRate);
         });
+
         it('Get combined rate using getRate() path = 4 and reverseRate', async function () {
             const currencyA = await symbolToBytes32('USDC');
             const currencyB = await symbolToBytes32('ETH');
@@ -114,25 +112,14 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
             const rateB = await chainlinkAdapter.getRate([currencyB, currencyC]);
             const rateC = await chainlinkAdapter.getRate([currencyC, currencyD]);
 
-            const multiplierRateA = await chainlinkAdapter.multiplier(currencyB);
+            const multiplierRateA = await chainlinkAdapter.getDecimals(currencyA, currencyB);
             const combRate1 = bn(rateA).mul(bn(rateB)).div(toDecimals('1', multiplierRateA));
-            const multipliercombRate1 = await chainlinkAdapter.multiplier(currencyC);
+            const multipliercombRate1 = await chainlinkAdapter.getDecimals(currencyB, currencyC);
             const combRate2 = bn(combRate1).mul(bn(rateC)).div(toDecimals('1', multipliercombRate1));
-
             expect(rate).to.eq.BN(combRate2);
         });
     });
     describe('Test reverts', async function () {
-        it('Only owner can call set multiplier', async function () {
-            await tryCatchRevert(
-                () => chainlinkAdapter.setMultiplier(
-                    '0x0',
-                    1,
-                    { from: accounts[9] }
-                ),
-                'Ownable: caller is not the owner'
-            );
-        });
         it('Only owner can call set aggregator', async function () {
             const currencyA = await symbolToBytes32('symA');
             const currencyB = await symbolToBytes32('symB');
@@ -142,8 +129,6 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
                     currencyA,
                     currencyB,
                     aggregator,
-                    18,
-                    18,
                     { from: accounts[1] }
                 ),
                 'Ownable: caller is not the owner'
@@ -158,8 +143,6 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
                     currencyA,
                     currencyB,
                     aggregator,
-                    18,
-                    18,
                     { from: owner }
                 ),
                 'ChainLinkAdapter/Aggregator 0x0 is not valid'
@@ -177,26 +160,6 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
             );
         });
     });
-    describe('Function setMultiplier', function () {
-        it('Should set a Multiplier', async function () {
-            const currency = await symbolToBytes32('Test Symbol');
-            const multiplier = 1;
-
-            const SetMultiplier = await toEvents(
-                chainlinkAdapter.setMultiplier(
-                    currency,
-                    multiplier,
-                    { from: owner }
-                ),
-                'SetMultiplier'
-            );
-
-            assert.equal(SetMultiplier._symbol, currency);
-            assert.equal(SetMultiplier._multiplier, multiplier);
-
-            assert.equal(await chainlinkAdapter.multiplier(currency), multiplier);
-        });
-    });
     describe('Function setAggregator', function () {
         it('Should set a new Aggregator', async function () {
             const currencyA = await symbolToBytes32('symA');
@@ -207,8 +170,6 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
                     currencyA,
                     currencyB,
                     aggregator,
-                    18,
-                    18,
                     { from: owner }
                 ),
                 'SetAggregator'
@@ -216,8 +177,6 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
             assert.equal(SetAggregator._symbolA, currencyA);
             assert.equal(SetAggregator._symbolB, currencyB);
             assert.equal(SetAggregator._aggregator, aggregator);
-            assert.equal(SetAggregator._multiplierA, 18);
-            assert.equal(SetAggregator._multiplierB, 18);
         });
         it('Should revert if Aggregator exits', async function () {
             const currencyA = await symbolToBytes32('RCN');
@@ -228,8 +187,6 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
                     currencyA,
                     currencyB,
                     aggregator,
-                    18,
-                    18,
                     { from: owner }
                 ),
                 'ChainLinkAdapter/Aggregator is already set'
@@ -257,8 +214,6 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
                     currencyA,
                     currencyB,
                     aggregator1.address,
-                    18,
-                    18,
                     { from: owner }
                 ),
                 'SetAggregator'
@@ -266,8 +221,6 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
             assert.equal(SetAggregator._symbolA, currencyA);
             assert.equal(SetAggregator._symbolB, currencyB);
             assert.equal(SetAggregator._aggregator, aggregator);
-            assert.equal(SetAggregator._multiplierA, 18);
-            assert.equal(SetAggregator._multiplierB, 18);
         });
     });
     describe('Test lastesTimestamp()', function () {

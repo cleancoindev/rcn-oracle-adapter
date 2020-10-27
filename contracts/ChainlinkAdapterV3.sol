@@ -12,49 +12,27 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
     using StringUtils for string;
 
     mapping(bytes32 => mapping(bytes32 => address)) public aggregators;
-    mapping(bytes32 => uint8) public multiplier;
 
-    event SetAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator, uint8 _multiplierA, uint8 _multiplierB);
+    event SetAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator);
     event RemoveAggregator(bytes32 _symbolA, bytes32 _symbolB, address _aggregator);
-    event SetMultiplier(bytes32 _symbol, uint8 _multiplier);
 
     function symbolToBytes32(string calldata _symbol) external pure returns (bytes32) {
         return _symbol.toBytes32();
     }
 
-    function getMultiplier(bytes32 _symbol) external override view returns (uint256) {
-        return 10 ** uint256(multiplier[_symbol]);
-    }
-
-    function setMultiplier(bytes32 _symbol, uint8 _multiplier) external override onlyOwner {
-        multiplier[_symbol] = _multiplier;
-        emit SetMultiplier(_symbol, _multiplier);
-    }
-
     function setAggregator(
         bytes32 _symbolA,
         bytes32 _symbolB,
-        address _aggregator,
-        uint8 _multiplierA,
-        uint8 _multiplierB
+        address _aggregator
     ) external override onlyOwner {
         require(_aggregator != address(0), "ChainLinkAdapter/Aggregator 0x0 is not valid");
         require(aggregators[_symbolA][_symbolB] == address(0), "ChainLinkAdapter/Aggregator is already set");
 
         aggregators[_symbolA][_symbolB] = _aggregator;
-        if (multiplier[_symbolA] == 0) {
-            multiplier[_symbolA] = _multiplierA;
-        }
-        if (multiplier[_symbolA] == 0) {
-            multiplier[_symbolB] = _multiplierB;
-        }
-
         emit SetAggregator(
             _symbolA,
             _symbolB,
-            _aggregator,
-            _multiplierA,
-            _multiplierB
+            _aggregator
         );
     }
 
@@ -97,11 +75,13 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
 
     function getRate(bytes32[] calldata path) external override view returns (uint256 combinedRate)  {
         uint256 prevRate;
+        uint8 prevDec;
         for (uint i; i < path.length - 1; i++) {
             (bytes32 input, bytes32 output) = (path[i], path[i + 1]);
-            (uint256 rate0) = _getPairRate(input, output);
-            combinedRate = prevRate > 0 ? _getCombined(prevRate, rate0, multiplier[input]) : rate0;
+            (uint256 rate0, uint8 decimals) = _getPairRate(input, output);
+            combinedRate = prevRate > 0 ? _getCombined(prevRate, rate0, prevDec) : rate0;
             prevRate = combinedRate;
+            prevDec = decimals;
         }
     }
 
@@ -111,19 +91,29 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
         answer = uint256(rate);
     }
 
-    function _getPairRate(bytes32 input, bytes32 output) private view returns (uint256 rate) {
+    function _getPairRate(bytes32 input, bytes32 output) private view returns (uint256 rate, uint8 decimals) {
         require(aggregators[input][output] != address(0) || aggregators[output][input] != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
 
+        decimals = getDecimals(input, output);
         if (aggregators[input][output] != address(0)) {
             rate = getPairLastRate(input, output);
         } else {
-            uint256 multiplier0 = 10 ** uint256(multiplier[input]);
-            uint256 multiplier1 = 10 ** uint256(multiplier[output]);
-            rate = multiplier0.mult(multiplier1).div(getPairLastRate(output, input));
+            rate = (10**(uint256(decimals)*2)).div(getPairLastRate(output, input));
         }
     }
 
     function _getCombined(uint256 rate0, uint256 rate1, uint8 _multiplier0) private pure returns (uint256 combinedRate) {
         combinedRate = rate0.mult(rate1).div(10 ** uint256(_multiplier0));
+    }
+
+    function getDecimals(bytes32 input, bytes32 output) public view returns (uint8 decimals) {
+        require(aggregators[input][output] != address(0) || aggregators[output][input] != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
+        AggregatorV3Interface aggregator;
+        if (aggregators[input][output] != address(0)) {
+            aggregator = AggregatorV3Interface(aggregators[input][output]);
+        } else {
+            aggregator = AggregatorV3Interface(aggregators[output][input]);
+        }
+        decimals = aggregator.decimals();
     }
 }
