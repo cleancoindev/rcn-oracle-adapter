@@ -51,7 +51,7 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
         await setAggregator('USDC', 'ETH', aggregator3.address);
 
         aggregator4 = await FakeAggregatorV3.new('ETH', 'USD', '8', 'ETH/USD', '1');
-        await aggregator4.setLatestAnswer(bn('40459747073')); 
+        await aggregator4.setLatestAnswer(bn('40459747073'));
         await setAggregator('ETH', 'USD', aggregator4.address);
 
         aggregator5 = await FakeAggregatorV3.new('GBP', 'USD', '8', 'GBP/USD', '1');
