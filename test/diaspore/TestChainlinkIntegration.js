@@ -24,10 +24,10 @@ contract('chainLink Diaspore oracle contract integration', function (accounts) {
     let aggregator6;
     let oracleFactory, oracleFactoryUSDC;
 
-    async function setAggregator (symbolA, symbolB, aggregator, multiplierA, multiplierB) {
+    async function setAggregator (symbolA, symbolB, aggregator) {
         const currencyA = await chainlinkAdapter.symbolToBytes32(symbolA);
         const currencyB = await chainlinkAdapter.symbolToBytes32(symbolB);
-        await chainlinkAdapter.setAggregator(currencyA, currencyB, aggregator, multiplierA, multiplierB);
+        await chainlinkAdapter.setAggregator(currencyA, currencyB, aggregator);
     };
 
     async function symbolToBytes32 (symbol) {
@@ -40,27 +40,27 @@ contract('chainLink Diaspore oracle contract integration', function (accounts) {
 
         aggregator1 = await FakeAggregatorV3.new('RCN', 'BTC', '18', 'RCN/BTC', '1');
         await aggregator1.setLatestAnswer(bn('5770000000000'));
-        await setAggregator('RCN', 'BTC', aggregator1.address, '18', '18');
+        await setAggregator('RCN', 'BTC', aggregator1.address);
 
         aggregator2 = await FakeAggregatorV3.new('BTC', 'ARS', '18', 'BTC/ARS', '1');
         await aggregator2.setLatestAnswer(bn('1538461538000000000000000'));
-        await setAggregator('BTC', 'ARS', aggregator2.address, '18', '18');
+        await setAggregator('BTC', 'ARS', aggregator2.address);
 
         aggregator3 = await FakeAggregatorV3.new('USDC', 'ETH', '18', 'USDC/ETH', '1');
         await aggregator3.setLatestAnswer(bn('2438295000000000'));
-        await setAggregator('USDC', 'ETH', aggregator3.address, '18', '18');
+        await setAggregator('USDC', 'ETH', aggregator3.address);
 
         aggregator4 = await FakeAggregatorV3.new('ETH', 'USD', '8', 'ETH/USD', '1');
-        await aggregator4.setLatestAnswer(bn('4094400000'));
-        await setAggregator('ETH', 'USD', aggregator4.address, '18', '8');
+        await aggregator4.setLatestAnswer(bn('40459747073'));
+        await setAggregator('ETH', 'USD', aggregator4.address);
 
         aggregator5 = await FakeAggregatorV3.new('GBP', 'USD', '8', 'GBP/USD', '1');
         await aggregator5.setLatestAnswer(bn('131019000'));
-        await setAggregator('GBP', 'USD', aggregator5.address, '18', '8');
+        await setAggregator('GBP', 'USD', aggregator5.address);
 
         aggregator6 = await FakeAggregatorV3.new('BTC', 'ETH', '18', 'BTC/ETH', '1');
         await aggregator6.setLatestAnswer(bn('29489572978791538000'));
-        await setAggregator('BTC', 'ETH', aggregator6.address, '18', '18');
+        await setAggregator('BTC', 'ETH', aggregator6.address);
 
         // Create Oracle Factory
         oracleFactory = await OracleFactory.new('RCN', '18');
@@ -96,9 +96,9 @@ contract('chainLink Diaspore oracle contract integration', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combRate.mul(bn(10 ** decimals)));
-            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyD);
             const factoryDecimals = await oracleFactory.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
+            const decCurrency = await chainlinkAdapter.getDecimals(currencyC, currencyD);
+            expect(tokens).to.eq.BN(factoryDecimals.mul(bn(10 ** decCurrency)));
         });
 
         it('Test Oracle Factory for RCN , set path [RCN,BTC,ARS] ', async function () {
@@ -127,9 +127,9 @@ contract('chainLink Diaspore oracle contract integration', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combinedRate.mul(bn(10 ** decimals)));
-            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyC);
             const factoryDecimals = await oracleFactory.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
+            const decCurrency = await chainlinkAdapter.getDecimals(currencyB, currencyC);
+            expect(tokens).to.eq.BN(factoryDecimals.mul(bn(10 ** decCurrency)));
         });
         it('Test Oracle Factory for USDC , set path [USDC,ETH,BTC,RCN] ', async function () {
             const currencyA = await symbolToBytes32('USDC');
@@ -159,9 +159,9 @@ contract('chainLink Diaspore oracle contract integration', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combRate.mul(bn(10 ** decimals)));
-            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyD);
             const factoryDecimals = await oracleFactoryUSDC.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
+            const decCurrency = await chainlinkAdapter.getDecimals(currencyC, currencyD);
+            expect(tokens).to.eq.BN(factoryDecimals.mul(bn(10 ** decCurrency)));
         });
         it('Test Oracle Factory for USDC , set path [USDC,ETH,BTC,ARS] ', async function () {
             const currencyA = await symbolToBytes32('USDC');
@@ -191,9 +191,40 @@ contract('chainLink Diaspore oracle contract integration', function (accounts) {
             const decimals = await oracleInstance.decimals();
 
             expect(equivalent).to.eq.BN(combRate.mul(bn(10 ** decimals)));
-            const multiplierAdded = await chainlinkAdapter.getMultiplier(currencyD);
             const factoryDecimals = await oracleFactoryUSDC.baseDecimals();
-            expect(tokens).to.eq.BN(factoryDecimals.mul(multiplierAdded));
+            const decCurrency = await chainlinkAdapter.getDecimals(currencyC, currencyD);
+            expect(tokens).to.eq.BN(factoryDecimals.mul(bn(10 ** decCurrency)));
+        });
+        it('Test Oracle Factory for USDC , set path [USDC,ETH,USD,GBP] ', async function () {
+            const currencyA = await symbolToBytes32('USDC');
+            const currencyB = await symbolToBytes32('ETH');
+            const currencyC = await symbolToBytes32('USD');
+            const currencyD = await symbolToBytes32('GBP');
+
+            const NewOracle = await toEvents(
+                oracleFactoryUSDC.newOracle(
+                    chainlinkAdapter.address,
+                    'GBP',
+                    'Libra esterlina',
+                    '8',
+                    address0x,
+                    'RCN team',
+                    [currencyA, currencyB, currencyC, currencyD],
+                    { from: owner }
+                ),
+                'NewOracle');
+
+            const combRate = await chainlinkAdapter.getRate([currencyA, currencyB, currencyC, currencyD]);
+            const oracleInstance = await MultiSourceOracle.at(NewOracle._oracle);
+            const readSample = await oracleInstance.readSample.call([]);
+            const tokens = readSample._tokens;
+            const equivalent = readSample._equivalent;
+            const decimals = await oracleInstance.decimals();
+
+            expect(equivalent).to.eq.BN(combRate.mul(bn(10 ** decimals)));
+            const factoryDecimals = await oracleFactoryUSDC.baseDecimals();
+            const decCurrency = await chainlinkAdapter.getDecimals(currencyC, currencyD);
+            expect(tokens).to.eq.BN(factoryDecimals.mul(bn(10 ** decCurrency)));
         });
     });
 
