@@ -87,6 +87,19 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
         }
     }
 
+    function getDecimals(bytes32 _input, bytes32 _output) public view override returns (uint8 decimals) {
+        address directRate = aggregators[_input][_output];
+        address reverseRate = aggregators[_output][_input];
+        require(directRate != address(0) || reverseRate != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
+        AggregatorV3Interface aggregator;
+        if (directRate != address(0)) {
+            aggregator = AggregatorV3Interface(directRate);
+        } else {
+            aggregator = AggregatorV3Interface(reverseRate);
+        }
+        decimals = aggregator.decimals();
+    }
+
     function getPairLastRate(bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 answer)  {
         AggregatorV3Interface aggregator = AggregatorV3Interface(aggregators[_symbolA][_symbolB]);
         (,int256 rate,,,) = aggregator.latestRoundData();
@@ -108,18 +121,5 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
 
     function _getCombined(uint256 rate0, uint256 rate1, uint8 _decimal) private pure returns (uint256 combinedRate) {
         combinedRate = rate0.mult(rate1).div(10 ** uint256(_decimal));
-    }
-
-    function getDecimals(bytes32 _input, bytes32 _output) public view returns (uint8 decimals) {
-        address directRate = aggregators[_input][_output];
-        address reverseRate = aggregators[_output][_input];
-        require(directRate != address(0) || reverseRate != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
-        AggregatorV3Interface aggregator;
-        if (directRate != address(0)) {
-            aggregator = AggregatorV3Interface(directRate);
-        } else {
-            aggregator = AggregatorV3Interface(reverseRate);
-        }
-        decimals = aggregator.decimals();
     }
 }
