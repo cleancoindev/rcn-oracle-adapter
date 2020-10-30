@@ -62,64 +62,49 @@ contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
     }
 
     function getLatestTimestamp(bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 lastTimestamp)  {
-        address directRate = aggregators[_symbolA][_symbolB];
-        address reverseRate = aggregators[_symbolB][_symbolA];
-        require(directRate != address(0) || reverseRate != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
+        address aggregator = aggregators[_symbolA][_symbolB];
 
-        AggregatorV3Interface aggregator;
-        if (directRate != address(0)) {
-            aggregator = AggregatorV3Interface(directRate);
-        } else {
-            aggregator = AggregatorV3Interface(reverseRate);
+        if (aggregator == address(0)) {
+            aggregator = aggregators[_symbolB][_symbolA];
+            require(aggregator != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
         }
-        (,,,lastTimestamp,) = aggregator.latestRoundData();
+        (,,,lastTimestamp,) = AggregatorV3Interface(aggregator).latestRoundData();
     }
 
-    function getRate(bytes32[] calldata path) external override view returns (uint256 combinedRate)  {
+    function getRate(bytes32[] calldata path) external override view returns (uint256 combinedRate, uint256 decimals)  {
         uint256 prevRate;
-        uint8 prevDec;
+        uint256 prevDec;
         for (uint i; i < path.length - 1; i++) {
             (bytes32 input, bytes32 output) = (path[i], path[i + 1]);
-            (uint256 rate0, uint8 decimals) = _getPairRate(input, output);
-            combinedRate = prevRate > 0 ? _getCombined(prevRate, rate0, prevDec) : rate0;
+            (combinedRate, decimals) = _getPairRate(input, output);
+            combinedRate = prevRate > 0 ? _getCombined(prevRate, combinedRate, prevDec) : combinedRate;
             prevRate = combinedRate;
             prevDec = decimals;
         }
     }
 
-    function getDecimals(bytes32 _input, bytes32 _output) public view override returns (uint8 decimals) {
-        address directRate = aggregators[_input][_output];
-        address reverseRate = aggregators[_output][_input];
-        require(directRate != address(0) || reverseRate != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
-        AggregatorV3Interface aggregator;
-        if (directRate != address(0)) {
-            aggregator = AggregatorV3Interface(directRate);
-        } else {
-            aggregator = AggregatorV3Interface(reverseRate);
-        }
-        decimals = aggregator.decimals();
-    }
-
-    function getPairLastRate(bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 answer)  {
+    function getPairLastRate(bytes32 _symbolA, bytes32 _symbolB) public view returns (uint256 answer, uint256 decimals)  {
         AggregatorV3Interface aggregator = AggregatorV3Interface(aggregators[_symbolA][_symbolB]);
         (,int256 rate,,,) = aggregator.latestRoundData();
+        require(rate > 0, "ChainLinkAdapter/Rate lower or equal to 0");
         answer = uint256(rate);
+        decimals = uint256(aggregator.decimals());
     }
 
-    function _getPairRate(bytes32 _input, bytes32 _output) private view returns (uint256 rate, uint8 decimals) {
-        address directRate = aggregators[_input][_output];
-        address reverseRate = aggregators[_output][_input];
-        require(directRate != address(0) || reverseRate != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
+    function _getPairRate(bytes32 _input, bytes32 _output) private view returns (uint256 rate, uint256 decimals) {
+        address aggregator = aggregators[_input][_output];
 
-        decimals = getDecimals(_input, _output);
-        if (directRate != address(0)) {
-            rate = getPairLastRate(_input, _output);
+        if (aggregator == address(0)) {
+            aggregator = aggregators[_output][_input];
+            require(aggregator != address(0), "ChainLinkAdapter/Aggregator not set, path not resolved");
+            (rate, decimals) = getPairLastRate(_output, _input);
+            rate = (10**(uint256(decimals)*2)).div(rate);
         } else {
-            rate = (10**(uint256(decimals)*2)).div(getPairLastRate(_output, _input));
+            (rate, decimals) = getPairLastRate(_input, _output);     
         }
     }
 
-    function _getCombined(uint256 rate0, uint256 rate1, uint8 _decimal) private pure returns (uint256 combinedRate) {
-        combinedRate = rate0.mult(rate1).div(10 ** uint256(_decimal));
+    function _getCombined(uint256 rate0, uint256 rate1, uint256 _decimal) private pure returns (uint256 combinedRate) {
+        combinedRate = rate0.mult(rate1).div(10 ** _decimal);
     }
 }
