@@ -66,7 +66,7 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
             const newRate = '5780000000000';
             await aggregator1.setLatestAnswer(bn(newRate));
             const rate = await chainlinkAdapter.getPairLastRate(currencyA, currencyB);
-            expect(rate).to.eq.BN(newRate);
+            expect(rate.answer).to.eq.BN(newRate);
         });
         it('Get Rate from aggregator 1 using getRate() ', async function () {
             const currencyA = await symbolToBytes32('RCN');
@@ -74,19 +74,18 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
             const newRate = '5770000000000';
             await aggregator1.setLatestAnswer(bn(newRate));
             const rate = await chainlinkAdapter.getRate([currencyA, currencyB]);
-            expect(rate).to.eq.BN(newRate);
+            expect(rate.combinedRate).to.eq.BN(newRate);
         });
         it('Get combined rate using getRate() path = 3 ', async function () {
             const currencyA = await symbolToBytes32('RCN');
             const currencyB = await symbolToBytes32('BTC');
             const currencyC = await symbolToBytes32('ARS');
-            const combinedRate = await chainlinkAdapter.getRate([currencyA, currencyB, currencyC]);
+            const rate = await chainlinkAdapter.getRate([currencyA, currencyB, currencyC]);
 
             const rateA = await chainlinkAdapter.getRate([currencyA, currencyB]);
             const rateB = await chainlinkAdapter.getRate([currencyB, currencyC]);
-            const multiplierrateA = await chainlinkAdapter.getDecimals(currencyA, currencyB);
-            const combRate = bn(rateA).mul(bn(rateB)).div(toDecimals('1', multiplierrateA));
-            expect(combinedRate).to.eq.BN(combRate);
+            const combRate = bn(rateA.combinedRate).mul(bn(rateB.combinedRate)).div(toDecimals('1', rateA.decimals));
+            expect(rate.combinedRate).to.eq.BN(combRate);
         });
         it('Get reverse rate', async function () {
             const currencyA = await symbolToBytes32('BTC');
@@ -96,9 +95,8 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
             const rate = await chainlinkAdapter.getRate([currencyA, currencyB]);
 
             const rateDirect = await chainlinkAdapter.getRate([currencyB, currencyA]);
-            const decimals = await chainlinkAdapter.getDecimals(currencyB, currencyA);
-            const reverseRate = bn(10).pow(bn(2).mul(decimals)).div(rateDirect);
-            expect(rate).to.eq.BN(reverseRate);
+            const reverseRate = bn(10).pow(rateDirect.decimals.mul(bn(2))).div(rateDirect.combinedRate);
+            expect(rate.combinedRate).to.eq.BN(reverseRate);
         });
 
         it('Get combined rate using getRate() path = 4 and reverseRate', async function () {
@@ -112,11 +110,9 @@ contract('chainLinkAdapterV3 Contract', function (accounts) {
             const rateB = await chainlinkAdapter.getRate([currencyB, currencyC]);
             const rateC = await chainlinkAdapter.getRate([currencyC, currencyD]);
 
-            const multiplierRateA = await chainlinkAdapter.getDecimals(currencyA, currencyB);
-            const combRate1 = bn(rateA).mul(bn(rateB)).div(toDecimals('1', multiplierRateA));
-            const multipliercombRate1 = await chainlinkAdapter.getDecimals(currencyB, currencyC);
-            const combRate2 = bn(combRate1).mul(bn(rateC)).div(toDecimals('1', multipliercombRate1));
-            expect(rate).to.eq.BN(combRate2);
+            const combRate1 = bn(rateA.combinedRate).mul(bn(rateB.combinedRate)).div(toDecimals('1', rateA.decimals));
+            const combRate2 = bn(combRate1).mul(bn(rateC.combinedRate)).div(toDecimals('1', rateB.decimals));
+            expect(rate.combinedRate).to.eq.BN(combRate2);
         });
     });
     describe('Test reverts', async function () {
