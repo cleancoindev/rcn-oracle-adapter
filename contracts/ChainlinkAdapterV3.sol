@@ -6,6 +6,12 @@ import "./utils/SafeMath.sol";
 import "./utils/StringUtils.sol";
 import "./interfaces/IOracleAdapter.sol";
 
+/**
+    @title Chainlink Oracle Adapter
+    @author Nicolas Menendez <nicolas.menendez@ripiocredit.network> 
+    @notice The chainlink oracle adapter supports querying dynamically constructed rates by combining multiple
+            Chainlink oracles; this process is performed by specifying a "path" for the rate query.
+*/
 
 contract ChainlinkAdapterV3 is Ownable, IOracleAdapter {
     using SafeMath for uint256;
